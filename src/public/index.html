@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Operations Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="app-header">
+      <div class="brand">
+        <h1>Network Scanner</h1>
+        <span class="version">v1.0.0</span>
+      </div>
+      <nav class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('network', this)">IP Devices</button>
+        <button class="tab-btn" onclick="switchTab('wifi', this)">Wi-Fi Signals</button>
+        <button class="tab-btn" onclick="switchTab('bluetooth', this)">Bluetooth</button>
+      </nav>
+    </header>
+
+    <div class="control-bar">
+      <div id="status" class="status-indicator">Ready to scan. Select a tab and run a scan.</div>
+      <button id="scanActionBtn" class="primary-btn" onclick="runActiveScan()">Scan Network</button>
+    </div>
+
+    <!-- TAB 1: IP NETWORK DEVICES -->
+    <section id="tab-network" class="tab-content active">
+      <div class="grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <h2>Ethernet / Wired</h2>
+            <span id="ethCount" class="badge">0</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>IP Address</th>
+                  <th>MAC Address</th>
+                  <th>Host / Vendor</th>
+                </tr>
+              </thead>
+              <tbody id="ethernetList">
+                <tr><td colspan="3" class="empty">Run scan to populate</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Wi-Fi Connected Devices</h2>
+            <span id="wifiDevCount" class="badge">0</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>IP Address</th>
+                  <th>MAC Address</th>
+                  <th>Host / Vendor</th>
+                </tr>
+              </thead>
+              <tbody id="wifiDevList">
+                <tr><td colspan="3" class="empty">Run scan to populate</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: WI-FI SIGNALS -->
+    <section id="tab-wifi" class="tab-content">
+      <div class="grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <h2>Open Networks (No Password)</h2>
+            <span id="openWifiCount" class="badge warning">0</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>SSID Name</th>
+                  <th>Signal</th>
+                  <th>CH</th>
+                  <th>BSSID</th>
+                </tr>
+              </thead>
+              <tbody id="openWifiList">
+                <tr><td colspan="4" class="empty">Run scan to populate</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Protected Networks</h2>
+            <span id="protWifiCount" class="badge">0</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>SSID Name</th>
+                  <th>Security</th>
+                  <th>Signal</th>
+                  <th>CH</th>
+                </tr>
+              </thead>
+              <tbody id="protectedWifiList">
+                <tr><td colspan="4" class="empty">Run scan to populate</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: BLUETOOTH -->
+    <section id="tab-bluetooth" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2>Discovered Bluetooth Peripherals (BLE)</h2>
+          <span id="btCount" class="badge">0</span>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Address / Identifier</th>
+                <th>Signal (RSSI)</th>
+                <th>Device Name</th>
+              </tr>
+            </thead>
+            <tbody id="btList">
+              <tr><td colspan="3" class="empty">Run scan to populate</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    let activeTab = 'network';
+
+    function switchTab(tabName, btnEl) {
+      activeTab = tabName;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+      btnEl.classList.add('active');
+      document.getElementById(`tab-${tabName}`).classList.add('active');
+
+      const actionBtn = document.getElementById('scanActionBtn');
+      if (tabName === 'network') actionBtn.innerText = 'Scan IP Devices';
+      if (tabName === 'wifi') actionBtn.innerText = 'Scan Wi-Fi Signals';
+      if (tabName === 'bluetooth') actionBtn.innerText = 'Scan Bluetooth';
+    }
+
+    function runActiveScan() {
+      if (activeTab === 'network') triggerNetworkScan();
+      if (activeTab === 'wifi') triggerWifiSignalScan();
+      if (activeTab === 'bluetooth') triggerBluetoothScan();
+    }
+
+    async function triggerNetworkScan() {
+      const status = document.getElementById('status');
+      const ethernetList = document.getElementById('ethernetList');
+      const wifiDevList = document.getElementById('wifiDevList');
+
+      status.innerText = 'Scanning IP Subnet...';
+      try {
+        const response = await fetch('/api/scan');
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+
+        document.getElementById('ethCount').innerText = data.devices.ethernet.length;
+        document.getElementById('wifiDevCount').innerText = data.devices.wifi.length;
+
+        renderRows(data.devices.ethernet, ethernetList, ['ip', 'mac', 'name']);
+        renderRows(data.devices.wifi, wifiDevList, ['ip', 'mac', 'name']);
+        status.innerText = 'IP Network scan complete.';
+      } catch (err) {
+        status.innerText = `Scan Error: ${err.message}`;
+      }
+    }
+
+    async function triggerWifiSignalScan() {
+      const status = document.getElementById('status');
+      const openList = document.getElementById('openWifiList');
+      const protList = document.getElementById('protectedWifiList');
+
+      status.innerText = 'Scanning wireless environment...';
+      try {
+        const response = await fetch('/api/scan-wifi-signals');
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+
+        document.getElementById('openWifiCount').innerText = data.networks.open.length;
+        document.getElementById('protWifiCount').innerText = data.networks.protected.length;
+
+        renderRows(data.networks.open, openList, ['ssid', 'signal', 'channel', 'bssid']);
+        renderRows(data.networks.protected, protList, ['ssid', 'security', 'signal', 'channel']);
+        status.innerText = 'Wi-Fi Signal scan complete.';
+      } catch (err) {
+        status.innerText = `Scan Error: ${err.message}`;
+      }
+    }
+
+    async function triggerBluetoothScan() {
+      const status = document.getElementById('status');
+      const btList = document.getElementById('btList');
+
+      status.innerText = 'Scanning Bluetooth devices (5s)...';
+      try {
+        const response = await fetch('/api/scan-bt');
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+
+        document.getElementById('btCount').innerText = data.count;
+        renderRows(data.devices, btList, ['address', 'rssi', 'name']);
+        status.innerText = 'Bluetooth scan complete.';
+      } catch (err) {
+        status.innerText = `Scan Error: ${err.message}`;
+      }
+    }
+
+    function renderRows(items, targetEl, keys) {
+      if (!items || items.length === 0) {
+        targetEl.innerHTML = `<tr><td colspan="${keys.length}" class="empty">No devices found</td></tr>`;
+        return;
+      }
+      targetEl.innerHTML = items.map(item => `
+        <tr>
+          ${keys.map(k => `<td class="${k === 'ip' || k === 'mac' || k === 'address' || k === 'bssid' ? 'mono' : ''}">${item[k] || 'N/A'}</td>`).join('')}
+        </tr>
+      `).join('');
+    }
+  </script>
+</body>
+</html>

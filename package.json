@@ -1,0 +1,16 @@
+{
+  "name": "nscanner",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@abandonware/noble": "^1.9.2-26",
+    "express": "^5.2.1",
+    "local-devices": "^4.0.0",
+    "mac-lookup": "^1.0.1",
+    "mac-oui-lookup": "^1.1.4",
+    "node-wifi": "^2.0.16"
+  }
+}
